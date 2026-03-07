@@ -1,0 +1,24 @@
+{
+    "name": "acoustics",
+    "context": "..",
+    "dockerFile": "../Dockerfile.dolfinx",
+    "runArgs": ["--name", "acoustics-dev"],
+    "workspaceFolder": "/home/acoustics",
+    "mounts": [
+        "source=${localWorkspaceFolder},target=/home/acoustics,type=bind"
+    ],
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "python.defaultInterpreterPath": "/dolfinx-env/bin/python3"
+            },
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance"
+            ]
+        }
+    },
+    "postCreateCommand": "pip install -r requirements.txt || true",
+    "remoteUser": "root"
+    
+}

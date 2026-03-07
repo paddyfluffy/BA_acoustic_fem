@@ -1,0 +1,8 @@
+FROM dolfinx/dolfinx:stable
+# Optional: set working directory and install extra stuff
+WORKDIR /home/acoustics
+COPY . /home/acoustics/
+RUN echo "source /usr/local/bin/dolfinx-complex-mode" >> /etc/bash.bashrc
+RUN pip install -r requirements.txt || true
+
+
