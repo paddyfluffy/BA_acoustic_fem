@@ -26,7 +26,7 @@ from utils.gmsh_step_mesher import load_pickle, save_pickle
 
 from utils.sphere_sampling import spharpy_dual_sphere 
 
-2
+
 # Initialize logging
 if MPI.COMM_WORLD.rank == 0:
     logging.basicConfig(level=logging.INFO)
@@ -48,6 +48,7 @@ CONFIG = {
     "freq_range": (20, 3000),
     "freq_step": 5,
     "shift_beta": 0.5,
+    "air_absorption": False,
     "results_folder": "results/medium_room_larger_spheres/",
     "mesh_pkl": "4x5x2p2_div10_hxt/4x5x2p2_mesh_data.pkl",
 
@@ -83,12 +84,6 @@ def main():
         mic_positions = [CONFIG["mic_position"]]
     mic_positions = [np.array(p, dtype=float) for p in mic_positions]
 
-    # source_positions = CONFIG["source_positions"]
-    # source_results_subfolders = []
-    # for s_idx, source_pos in enumerate(source_positions):
-    #     source_subfolder = os.path.join(CONFIG["results_folder"], f"source_{s_idx}")
-    #     os.makedirs(source_subfolder, exist_ok=True)
-    #     source_results_subfolders.append(source_subfolder) 
 
 
     current_mesh_freq = None
@@ -243,21 +238,6 @@ def main():
             # More aggressive coarsening helps with shifted operator
             opts[f"{opt_prefix}pc_gamg_threshold"] = 0.005
 
-
-            # opts[f"{opt_prefix}ksp_type"] = "fgmres"          # or "fgmres"
-            # opts[f"{opt_prefix}ksp_rtol"] = 1e-5             # loosen if you want faster
-            # opts[f"{opt_prefix}ksp_atol"] = 0.0
-            # opts[f"{opt_prefix}ksp_max_it"] = 400            # cap iterations
-
-            # opts[f"{opt_prefix}pc_type"] = "asm"            # additive Schwarz
-            # opts[f"{opt_prefix}sub_pc_type"] = "lu"
-            # # opts[f"{opt_prefix}pc_gamg_type"] = "agg"
-            # # opts[f"{opt_prefix}pc_gamg_threshold"] = 0.02    # coarsening aggressiveness
-
-            # # smoother on multigrid levels
-            # opts[f"{opt_prefix}mg_levels_ksp_type"] = "chebyshev"
-            # opts[f"{opt_prefix}mg_levels_pc_type"] = "jacobi"
-
             solver.setFromOptions()
             current_mesh_freq = mesh_freq
 
@@ -269,11 +249,17 @@ def main():
             del aP
 
         omega.value = 2 * np.pi * f
-        # k.value = omega.value / CONFIG["c"]
-        alpha_db_per_m = air_absorption_db_per_m_iso9613(f, T_C=20.0, RH=50.0, p_kPa=101.325)
-        alpha_p = alpha_db_per_m / 8.686
-        logging.info(f"Frequency {f} Hz: air absorption alpha = {alpha_db_per_m:.4f} dB/m, alpha_p = {alpha_p:.6f} 1/m")
-        k.value = (omega.value / CONFIG["c"]) + 1j * alpha_p
+        k.value = omega.value / CONFIG["c"]
+        if CONFIG.get("air_absorption", True):
+            alpha_db_per_m = air_absorption_db_per_m_iso9613(f, T_C=20.0, RH=50.0, p_kPa=101.325)
+            alpha_p = alpha_db_per_m / 8.686
+            logging.info(
+                f"Frequency {f} Hz: air absorption alpha = {alpha_db_per_m:.4f} dB/m, alpha_p = {alpha_p:.6f} 1/m"
+            )
+        else:
+            alpha_p = 0.0
+            logging.info(f"Frequency {f} Hz: air absorption disabled")
+        # k.value = (omega.value / CONFIG["c"]) + 1j * alpha_p
         Z.value = z_vals[i]
         if use_wall_abs:
             for tag, spec in wall_specs.items():

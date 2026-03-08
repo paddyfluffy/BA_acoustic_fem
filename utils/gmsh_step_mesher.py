@@ -175,13 +175,11 @@ def mesh_range(step_file, frequencies, show_meshing_info=False, data_pkl_path=No
     finally:
         _finalize_gmsh()
 
-    xdmf_paths = _convert_msh_to_xdmf(step_base, msh_files_by_freq, OUTPATH)
-
     mesh_data = {
         "volume": volume_to_surfaces,
         "orientation": surface_orientations,
-        "xdmf_paths": xdmf_paths,
-        "frequencies": sorted(xdmf_paths.keys())
+        "msh_paths": msh_files_by_freq,
+        "frequencies": sorted(msh_files_by_freq.keys())
     }
     save_pickle(mesh_data, DATA_PKL)
     print(f"Mesh metadata saved to: {DATA_PKL}")
@@ -338,6 +336,15 @@ def mesh_range_from_planes(planes, frequencies, show_meshing_info=False, data_pk
         sl = gmsh.model.occ.addSurfaceLoop(surface_tags)
         vol_tag = gmsh.model.occ.addVolume([sl])
 
+        # Cleanup duplicated entities to improve meshing performance
+        gmsh.model.occ.removeAllDuplicates()
+        try:
+            gmsh.model.occ.healShapes()
+            print("Geometry healed to remove duplicates and fix issues.")
+        except Exception:
+            print("Geometry healing failed, but continuing with meshing. Mesh quality may be affected.")
+            pass
+
         gmsh.model.occ.synchronize()
 
         # Add wall physical groups after synchronize
@@ -371,13 +378,20 @@ def mesh_range_from_planes(planes, frequencies, show_meshing_info=False, data_pk
     finally:
         _finalize_gmsh()
 
-    xdmf_paths = _convert_msh_to_xdmf("planes", msh_files_by_freq, OUTPATH)
+    # xdmf_paths = _convert_msh_to_xdmf("planes", msh_files_by_freq, OUTPATH)
 
+    # mesh_data = {
+    #     "volume": volume_to_surfaces,
+    #     "orientation": surface_orientations,
+    #     "xdmf_paths": xdmf_paths,
+    #     "frequencies": sorted(xdmf_paths.keys()),
+    #     "wall_groups": wall_phys_map,
+    # }
     mesh_data = {
         "volume": volume_to_surfaces,
         "orientation": surface_orientations,
-        "xdmf_paths": xdmf_paths,
-        "frequencies": sorted(xdmf_paths.keys()),
+        "msh_paths": msh_files_by_freq,
+        "frequencies": sorted(msh_files_by_freq.keys()),
         "wall_groups": wall_phys_map,
     }
     save_pickle(mesh_data, DATA_PKL)

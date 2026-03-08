@@ -86,7 +86,7 @@ def main():
     mesh_pkl = mesh_range_from_planes(
         planes=planes,
         frequencies=freqs,
-        show_meshing_info=False,
+        show_meshing_info=True,
         data_pkl_path=os.path.join(outdir, "planes_mesh_data.pkl"),
         outpath=outdir,
         c=343.0,

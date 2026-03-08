@@ -1,0 +1,9 @@
+*.xdmf
+*.h5
+*.msh
+*.pkl
+*.log
+*.txt
+*.wav
+*.npz
+*.pyc

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PARAMS_FILE="test_params.txt"
+PARAMS_FILE="test_params_1000hz.txt"
 MESH_PATH_FILE="results/$(basename "$PARAMS_FILE" .txt)/meshes/mesh_pkl_path.txt"
 
 /dolfinx-env/bin/python3 code/run_mesh_from_params.py --params "$PARAMS_FILE"
@@ -12,6 +12,9 @@ if [[ ! -f "$MESH_PATH_FILE" ]]; then
 fi
 
 MESH_PKL=$(cat "$MESH_PATH_FILE")
+
+mpiexec -n 32 /dolfinx-env/bin/python3 code/msh_to_xdmf.py \
+  --mesh-pkl "$MESH_PKL"
 
 mpiexec -n 32 /dolfinx-env/bin/python3 code/run_solver_from_params.py \
   --params "$PARAMS_FILE" \
