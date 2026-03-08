@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PARAMS_FILE="test_params_1000hz.txt"
-MESH_PATH_FILE="results/$(basename "$PARAMS_FILE" .txt)/meshes/mesh_pkl_path.txt"
+PARAMS_FILE="params.txt"
+
+BASE_DIR="results/$(basename "$PARAMS_FILE" .txt)/meshes"
+MESH_PATH_FILE="$BASE_DIR/mesh_pkl_path.txt"
+
+# create directory only if it doesn't exist
+mkdir -p "$BASE_DIR"
 
 /dolfinx-env/bin/python3 code/run_mesh_from_params.py --params "$PARAMS_FILE"
 
@@ -12,9 +17,6 @@ if [[ ! -f "$MESH_PATH_FILE" ]]; then
 fi
 
 MESH_PKL=$(cat "$MESH_PATH_FILE")
-
-mpiexec -n 32 /dolfinx-env/bin/python3 code/msh_to_xdmf.py \
-  --mesh-pkl "$MESH_PKL"
 
 mpiexec -n 32 /dolfinx-env/bin/python3 code/run_solver_from_params.py \
   --params "$PARAMS_FILE" \

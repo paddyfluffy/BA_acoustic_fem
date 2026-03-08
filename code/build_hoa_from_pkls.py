@@ -22,7 +22,7 @@ FREQ_MIN = 50
 FREQ_MAX = 3000
 FREQ_STEP = 5 # must match  saved sweep
 
-HOA_ORDER_OUT = 3  # fixed HOA output order -> (N+1)^2 channels
+HOA_ORDER_OUT = 1  # fixed HOA output order -> (N+1)^2 channels
 T_DESIGN_NMAX = 8  # must match spharpy_dual_sphere(... t_design_nmax=10)
 
 OUT_NAME = "hoa_ir.wav"
@@ -331,9 +331,7 @@ def process_mic_folder(mic_dir: Path):
             if mic_idx < len(MIC_ANGLES_DEG):
                 azim = MIC_ANGLES_DEG[mic_idx]
                 w = steering_weights(HOA_ORDER_OUT, azim, MIC_ELEV_DEG)
-                H_dir = w @ H
-                dir_ir_signal = pf.dsp.fft.irfft(H_dir, n_samples=nfft, sampling_rate=FS, fft_norm='none')
-                dir_ir = np.array(dir_ir_signal, dtype=np.float64)
+                dir_ir = w @ ir
 
                 peak_dir = np.max(np.abs(dir_ir))
                 if peak_dir > 0:
@@ -345,6 +343,7 @@ def process_mic_folder(mic_dir: Path):
                 print(f"[{mic_dir.name}] wrote {dir_out_path}  shape={dir_wav.shape}")
 
                 dir_spec_path = mic_dir / DIR_OUT_SPECTRUM
+                H_dir = np.fft.rfft(dir_ir, n=nfft)
                 np.savez(
                     dir_spec_path,
                     H_dir=H_dir,

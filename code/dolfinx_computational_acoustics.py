@@ -49,9 +49,9 @@ CONFIG = {
     "freq_step": 5,
     "shift_beta": 0.5,
     "air_absorption": False,
+    "source_cutoff_m": 0.2,
     "results_folder": "results/medium_room_larger_spheres/",
     "mesh_pkl": "4x5x2p2_div10_hxt/4x5x2p2_mesh_data.pkl",
-
 }
 
 def delany_bazley_layer(f, rho0, c, sigma, d):
@@ -249,7 +249,7 @@ def main():
             del aP
 
         omega.value = 2 * np.pi * f
-        k.value = omega.value / CONFIG["c"]
+        #k.value = omega.value / CONFIG["c"]
         if CONFIG.get("air_absorption", True):
             alpha_db_per_m = air_absorption_db_per_m_iso9613(f, T_C=20.0, RH=50.0, p_kPa=101.325)
             alpha_p = alpha_db_per_m / 8.686
@@ -259,7 +259,7 @@ def main():
         else:
             alpha_p = 0.0
             logging.info(f"Frequency {f} Hz: air absorption disabled")
-        # k.value = (omega.value / CONFIG["c"]) + 1j * alpha_p
+        k.value = (omega.value / CONFIG["c"]) + 1j * alpha_p
         Z.value = z_vals[i]
         if use_wall_abs:
             for tag, spec in wall_specs.items():
@@ -334,9 +334,28 @@ def main():
         solver.solve(b.x.petsc_vec, p_a.x.petsc_vec)
         p_a.x.scatter_forward()
 
-        with XDMFFile(domain.comm, os.path.join(CONFIG["results_folder"], f"solution_{f}Hz.xdmf"), "w") as xdmf:
-            xdmf.write_mesh(domain)
-            xdmf.write_function(p_a)
+        # Debug: Write out the solution for visualization (optional, can be commented out for performance)
+        # Replace values near the source with NaN for better visualisation of whole field
+        # cutoff = float(CONFIG.get("source_cutoff_m", 0.0) or 0.0)
+        # if cutoff > 0.0:
+        #     coords = V.tabulate_dof_coordinates().reshape((-1, domain.geometry.dim))
+        #     distances = np.linalg.norm(coords - source_pos, axis=1)
+        #     mask = distances < cutoff
+        #     p_vis = Function(V)
+        #     p_vis.name = "pressure_masked"
+        #     p_vis.x.array[:] = p_a.x.array
+        #     if np.iscomplexobj(p_vis.x.array):
+        #         nan_val = np.nan + 1j * np.nan
+        #     else:
+        #         nan_val = np.nan
+        #     p_vis.x.array[mask] = nan_val
+        # else:
+        #     p_vis = None
+        # with XDMFFile(domain.comm, os.path.join(CONFIG["results_folder"], f"solution_{f}Hz.xdmf"), "w") as xdmf:
+        #     xdmf.write_mesh(domain)
+        #     xdmf.write_function(p_a)
+        #     if p_vis is not None:
+        #         xdmf.write_function(p_vis)
         
         # Calculate and log solve time
         solve_elapsed_time = time.time() - solve_start_time
