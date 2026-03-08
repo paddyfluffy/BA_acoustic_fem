@@ -18,6 +18,10 @@ fi
 
 MESH_PKL=$(cat "$MESH_PATH_FILE")
 
+mpiexec -n 32 /dolfinx-env/bin/python3 code/msh_to_xdmf.py \
+  --mesh-pkl "$MESH_PKL"
+
+
 mpiexec -n 32 /dolfinx-env/bin/python3 code/run_solver_from_params.py \
   --params "$PARAMS_FILE" \
   --mesh-pkl "$MESH_PKL"
