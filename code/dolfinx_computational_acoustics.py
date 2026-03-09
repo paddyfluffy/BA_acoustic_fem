@@ -33,6 +33,9 @@ if MPI.COMM_WORLD.rank == 0:
 else:
     logging.basicConfig(level=logging.WARNING)
 
+# Reduce urllib3 chatter (redirect/info logs)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+
 CONFIG = {
     "rho0": 1.225,
     "c": 343,
