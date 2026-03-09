@@ -17,7 +17,10 @@ if [[ ! -f "$PARAMS_HOST" ]]; then
   exit 1
 fi
 
-# Copy params into container workspace so it can be parsed inside
 docker cp "$PARAMS_HOST" "$CONTAINER_NAME:$PARAMS_IN_CONTAINER"
 
-docker exec -i "$CONTAINER_NAME" bash -lc "export PYTHONPATH=/usr/local/dolfinx-complex/lib/python3.12/dist-packages:\$PYTHONPATH; export LD_LIBRARY_PATH=/usr/local/dolfinx-complex/lib:\$LD_LIBRARY_PATH; cd $WORKDIR && bash run_all.sh '$PARAMS_BASENAME'"
+docker exec -i -w "$WORKDIR" "$CONTAINER_NAME" bash -lc "
+  set -e
+  source /usr/local/bin/dolfinx-complex-mode
+  bash run_all.sh '$PARAMS_BASENAME'
+"
