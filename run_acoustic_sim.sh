@@ -6,6 +6,8 @@ WORKDIR="/home/acoustics"
 PARAMS_HOST="${1:-params.txt}"
 PARAMS_BASENAME="$(basename "$PARAMS_HOST")"
 PARAMS_IN_CONTAINER="$WORKDIR/$PARAMS_BASENAME"
+PARAMS_DIR_HOST="$(dirname "$PARAMS_HOST")"
+RESULTS_SPHERES_IN_CONTAINER="$WORKDIR/results/$(basename "$PARAMS_BASENAME" .txt)/spheres"
 
 if ! docker ps --format '{{.Names}}' | grep -qx "$CONTAINER_NAME"; then
   echo "Container not running: $CONTAINER_NAME" >&2
@@ -24,3 +26,6 @@ docker exec -i -w "$WORKDIR" "$CONTAINER_NAME" bash -lc "
   source /usr/local/bin/dolfinx-complex-mode
   bash run_all.sh '$PARAMS_BASENAME'
 "
+
+# Copy spheres output back to the host next to the params file
+docker cp "$CONTAINER_NAME:$RESULTS_SPHERES_IN_CONTAINER" "$PARAMS_DIR_HOST/"
