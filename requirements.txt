@@ -1,0 +1,6 @@
+matplotlib
+scipy
+scifem
+pysofaconventions
+urllib3
+spharpy
