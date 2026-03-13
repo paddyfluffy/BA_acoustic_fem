@@ -18,6 +18,8 @@ docker run --name acoustics-dev --rm -it \
   acoustics-dev
 ```
 
+Tip: increase Docker memory/CPU limits; FEM simulations can be resource intensive.
+
 ## Run From Outside the Container
 
 Use `run_acoustic_sim.sh` on the host. It copies the params file into the container, runs the full pipeline, then copies the spheres output back next to the params file.

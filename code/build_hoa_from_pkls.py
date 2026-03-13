@@ -9,6 +9,10 @@ import pyfar as pf
 import spharpy.samplings as sps
 import spharpy.spherical as sph
 
+# Suppress SSL warnings from urllib3 (used by spharpy for downloading t-design data)
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning) # ignore SSL warnings pyfar
+
 from utils.gmsh_step_mesher import load_pickle
 
 
@@ -25,8 +29,8 @@ FREQ_STEP = 5 # must match  saved sweep
 HOA_ORDER_OUT = 1  # fixed HOA output order -> (N+1)^2 channels
 T_DESIGN_NMAX = 8  # must match spharpy_dual_sphere(... t_design_nmax=10)
 
-ZERO_PAD_FACTOR = 2  # pad IR length by this factor
-FADE_OUT_MS = 100    # fade-out length at IR tail
+ZERO_PAD_FACTOR = 1 # pad IR length by this factor
+FADE_OUT_MS = 0   # fade-out length at IR tail
 
 OUT_NAME = "hoa_ir.wav"
 OUT_SPECTRUM = "hoa_spectrum.npz"
@@ -351,7 +355,7 @@ def process_mic_folder(mic_dir: Path):
                 w = steering_weights(HOA_ORDER_OUT, azim, MIC_ELEV_DEG)
                 dir_ir = w @ ir
 
-                dir_ir = _apply_fade(dir_ir, FS, FADE_OUT_MS)
+                #dir_ir = _apply_fade(dir_ir, FS, FADE_OUT_MS)
 
                 dir_wav = dir_ir.astype(np.float32)
                 dir_out_path = mic_dir / DIR_OUT_NAME
