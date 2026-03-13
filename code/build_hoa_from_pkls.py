@@ -25,6 +25,9 @@ FREQ_STEP = 5 # must match  saved sweep
 HOA_ORDER_OUT = 1  # fixed HOA output order -> (N+1)^2 channels
 T_DESIGN_NMAX = 8  # must match spharpy_dual_sphere(... t_design_nmax=10)
 
+ZERO_PAD_FACTOR = 2  # pad IR length by this factor
+FADE_OUT_MS = 100    # fade-out length at IR tail
+
 OUT_NAME = "hoa_ir.wav"
 OUT_SPECTRUM = "hoa_spectrum.npz"
 
@@ -110,6 +113,7 @@ def _parse_int(value: str) -> int:
 def _apply_config(path: str) -> None:
     global ROOT, FREQ_MIN, FREQ_MAX, FREQ_STEP, OUT_NAME, FS, HOA_ORDER_OUT
     global DIR_OUT_NAME, DIR_OUT_SPECTRUM, MIC_ANGLES_DEG, MIC_ELEV_DEG
+    global ZERO_PAD_FACTOR, FADE_OUT_MS
     sections = _parse_sections(path)
     base_name = os.path.splitext(os.path.basename(path))[0]
 
@@ -142,6 +146,11 @@ def _apply_config(path: str) -> None:
         FS = _parse_int(sections["sampling_rate"])
     if "hoa_order" in sections:
         HOA_ORDER_OUT = _parse_int(sections["hoa_order"])
+
+    if "zero_pad_factor" in sections:
+        ZERO_PAD_FACTOR = max(1, _parse_int(sections["zero_pad_factor"]))
+    if "fade_out_ms" in sections:
+        FADE_OUT_MS = max(0, _parse_int(sections["fade_out_ms"]))
 
     if "dir_out_name" in sections:
         DIR_OUT_NAME = sections["dir_out_name"].strip()
@@ -195,6 +204,16 @@ def reconstruct_sampling():
     Y = sph.spherical_harmonic_basis_real(HOA_ORDER_OUT, coords)
     n_pts = Y.shape[0]
     return Y, n_pts
+
+def _apply_fade(ir: np.ndarray, fs: int, fade_ms: int) -> np.ndarray:
+    if fade_ms <= 0:
+        return ir
+    fade_len = int(round(fs * (fade_ms / 1000.0)))
+    if fade_len <= 0 or fade_len >= ir.shape[-1]:
+        return ir
+    window = np.linspace(1.0, 0.0, fade_len, dtype=ir.dtype)
+    ir[..., -fade_len:] *= window
+    return ir
 
 def _dir_to_xyz(azim_deg: float, elev_deg: float) -> tuple[float, float, float]:
     az = np.deg2rad(azim_deg)
@@ -295,15 +314,14 @@ def process_mic_folder(mic_dir: Path):
         H[:, -1] = 0.0
 
     # IFFT per channel using pyfar
-    ir = np.zeros((n_ch, nfft), dtype=np.float64)
+    nfft_pad = int(nfft * max(1, ZERO_PAD_FACTOR))
+    ir = np.zeros((n_ch, nfft_pad), dtype=np.float64)
     for ch in range(n_ch):
-        ir_signal = pf.dsp.fft.irfft(H[ch], n_samples=nfft, sampling_rate=FS, fft_norm='none')
+        ir_signal = pf.dsp.fft.irfft(H[ch], n_samples=nfft_pad, sampling_rate=FS, fft_norm='none')
         ir[ch] = np.array(ir_signal)
 
-    # Normalize
-    peak = np.max(np.abs(ir))
-    if peak > 0:
-        ir = 0.9 * ir / peak
+    # Fade-out to avoid abrupt cutoff
+    ir = _apply_fade(ir, FS, FADE_OUT_MS)
 
     wav = ir.T.astype(np.float32)  # (samples, channels)
     out_path = mic_dir / OUT_NAME
@@ -333,9 +351,7 @@ def process_mic_folder(mic_dir: Path):
                 w = steering_weights(HOA_ORDER_OUT, azim, MIC_ELEV_DEG)
                 dir_ir = w @ ir
 
-                peak_dir = np.max(np.abs(dir_ir))
-                if peak_dir > 0:
-                    dir_ir = 0.9 * dir_ir / peak_dir
+                dir_ir = _apply_fade(dir_ir, FS, FADE_OUT_MS)
 
                 dir_wav = dir_ir.astype(np.float32)
                 dir_out_path = mic_dir / DIR_OUT_NAME
@@ -343,13 +359,13 @@ def process_mic_folder(mic_dir: Path):
                 print(f"[{mic_dir.name}] wrote {dir_out_path}  shape={dir_wav.shape}")
 
                 dir_spec_path = mic_dir / DIR_OUT_SPECTRUM
-                H_dir = np.fft.rfft(dir_ir, n=nfft)
+                H_dir = np.fft.rfft(dir_ir, n=nfft_pad)
                 np.savez(
                     dir_spec_path,
                     H_dir=H_dir,
                     fs=FS,
-                    nfft=nfft,
-                    df=df,
+                    nfft=nfft_pad,
+                    df=FS / nfft_pad,
                     azim_deg=azim,
                     elev_deg=MIC_ELEV_DEG,
                 )
