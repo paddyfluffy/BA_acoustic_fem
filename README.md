@@ -29,3 +29,24 @@ bash run_acoustic_sim.sh params.txt
 ```
 
 If no argument is passed, it defaults to `params.txt`.
+
+## params.txt Reference
+
+The `params.txt` file is a simple section-based config. Each section name ends with `:` and the values follow on the next lines.
+
+sections:
+
+- `planes:` List of triangle planes defining the room. Each plane is 3 XYZ points.
+- `meshing_freqs:` Frequencies used to build meshes (Hz). Include the highest frequency you will solve.
+- `source_position:` XYZ location of the point source.
+- `mic_positions:` List of mic XYZ positions.
+- `mic_angles:` Azimuth angles (deg) for directional IR steering. One per mic.
+- `mic_amplitudes:` Per-mic gain multiplier applied to directional IR only.
+- `mic_patterns:` Per-mic pattern weights used by downstream processing (optional).
+- `wall_abs:` Per-wall absorber settings. Use `0` for rigid. Otherwise `(<sigma> <thickness>)` for Delany-Bazley, where:
+  - `sigma` is flow resistivity (Pa*s/m^2). Typical ranges: 5e3 to 5e5.
+  - `thickness` is absorber thickness (m). Typical ranges: 0.01 to 0.2.
+- `freq_range:` `(min max step)` in Hz for the solver sweep.
+- `sampling_rate:` Output sampling rate for IRs (Hz).
+- `hoa_order:` HOA order for output (1 -> 4 channels).
+
