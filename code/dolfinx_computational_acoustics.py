@@ -261,7 +261,6 @@ def main():
             )
         else:
             alpha_p = 0.0
-            logging.info(f"Frequency {f} Hz: air absorption disabled")
         k.value = (omega.value / CONFIG["c"]) + 1j * alpha_p
         Z.value = z_vals[i]
         if use_wall_abs:
