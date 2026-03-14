@@ -19,11 +19,11 @@ from utils.gmsh_step_mesher import load_pickle
 # -----------------------------
 # Settings (match  FEM run)
 # -----------------------------
-ROOT = Path("results/medium_room_larger_spheres/spheres")  # mic_0/, mic_1/, ...
+ROOT = Path("results/params/spheres")  # mic_0/, mic_1/, ...
 FS = 44100
 
-FREQ_MIN = 50
-FREQ_MAX = 3000
+FREQ_MIN = 20
+FREQ_MAX = 100
 FREQ_STEP = 5 # must match  saved sweep
 
 HOA_ORDER_OUT = 1  # fixed HOA output order -> (N+1)^2 channels
@@ -38,6 +38,7 @@ OUT_SPECTRUM = "hoa_spectrum.npz"
 DIR_OUT_NAME = "hoa_ir_dir.wav"
 DIR_OUT_SPECTRUM = "hoa_spectrum_dir.npz"
 MIC_ANGLES_DEG = None
+MIC_AMPLITUDES = None
 MIC_ELEV_DEG = 0.0
 
 
@@ -116,7 +117,7 @@ def _parse_int(value: str) -> int:
 
 def _apply_config(path: str) -> None:
     global ROOT, FREQ_MIN, FREQ_MAX, FREQ_STEP, OUT_NAME, FS, HOA_ORDER_OUT
-    global DIR_OUT_NAME, DIR_OUT_SPECTRUM, MIC_ANGLES_DEG, MIC_ELEV_DEG
+    global DIR_OUT_NAME, DIR_OUT_SPECTRUM, MIC_ANGLES_DEG, MIC_AMPLITUDES, MIC_ELEV_DEG
     global ZERO_PAD_FACTOR, FADE_OUT_MS
     sections = _parse_sections(path)
     base_name = os.path.splitext(os.path.basename(path))[0]
@@ -164,6 +165,10 @@ def _apply_config(path: str) -> None:
         vals = _parse_sexpr(sections["mic_angles"])
         if vals is not None:
             MIC_ANGLES_DEG = [float(v) for v in vals]
+    if "mic_amplitudes" in sections:
+        vals = _parse_sexpr(sections["mic_amplitudes"])
+        if vals is not None:
+            MIC_AMPLITUDES = [float(v) for v in vals]
     if "mic_elev" in sections:
         MIC_ELEV_DEG = float(sections["mic_elev"].strip())
 
@@ -263,8 +268,10 @@ def process_mic_folder(mic_dir: Path):
     n_ch = acn_num_channels(HOA_ORDER_OUT)
     H = np.zeros((n_ch, n_bins), dtype=np.complex128)
 
+
     used = 0
     order_energy_accum = np.zeros(HOA_ORDER_OUT + 1, dtype=np.float64)
+    printed_stats = False
     for pkl_path in pkls:
         f_hz = parse_freq_hz(pkl_path.name)
 
@@ -275,6 +282,13 @@ def process_mic_folder(mic_dir: Path):
 
         data = load_pickle(str(pkl_path))
         p_vals = np.asarray(data["values"], dtype=np.complex128)
+        if not printed_stats:
+            abs_vals = np.abs(p_vals)
+            print(
+                f"[{mic_dir.name}] {pkl_path.name} |p| min={abs_vals.min():.3e} "
+                f"max={abs_vals.max():.3e} mean={abs_vals.mean():.3e}"
+            )
+            printed_stats = True
 
         if p_vals.shape[0] != n_pts:
             raise RuntimeError(
@@ -326,6 +340,8 @@ def process_mic_folder(mic_dir: Path):
 
     # Fade-out to avoid abrupt cutoff
     ir = _apply_fade(ir, FS, FADE_OUT_MS)
+    print(f"Max |H|: {np.max(np.abs(H))}")
+    print(f"Max |ir|: {np.max(np.abs(ir))}")
 
     wav = ir.T.astype(np.float32)  # (samples, channels)
     out_path = mic_dir / OUT_NAME
@@ -354,6 +370,12 @@ def process_mic_folder(mic_dir: Path):
                 azim = MIC_ANGLES_DEG[mic_idx]
                 w = steering_weights(HOA_ORDER_OUT, azim, MIC_ELEV_DEG)
                 dir_ir = w @ ir
+
+                mic_gain = 1.0
+                if MIC_AMPLITUDES is not None and mic_idx < len(MIC_AMPLITUDES):
+                    mic_gain = float(MIC_AMPLITUDES[mic_idx])
+                if mic_gain != 1.0:
+                    dir_ir = dir_ir * mic_gain
 
                 #dir_ir = _apply_fade(dir_ir, FS, FADE_OUT_MS)
 

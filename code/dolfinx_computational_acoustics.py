@@ -41,7 +41,7 @@ CONFIG = {
     "c": 343,
     "sigma": 1.5e4,
     "d": 0.02,
-    "Q": 1e-5, 
+    "Q": 1e-3, 
     "source_position": [0.5, 2.5, 1.0],
     "mic_positions": [
         [2.0, 1, 1.6],
@@ -338,26 +338,26 @@ def main():
 
         # Debug: Write out the solution for visualization (optional, can be commented out for performance)
         # Replace values near the source with NaN for better visualisation of whole field
-        # cutoff = float(CONFIG.get("source_cutoff_m", 0.0) or 0.0)
-        # if cutoff > 0.0:
-        #     coords = V.tabulate_dof_coordinates().reshape((-1, domain.geometry.dim))
-        #     distances = np.linalg.norm(coords - source_pos, axis=1)
-        #     mask = distances < cutoff
-        #     p_vis = Function(V)
-        #     p_vis.name = "pressure_masked"
-        #     p_vis.x.array[:] = p_a.x.array
-        #     if np.iscomplexobj(p_vis.x.array):
-        #         nan_val = np.nan + 1j * np.nan
-        #     else:
-        #         nan_val = np.nan
-        #     p_vis.x.array[mask] = nan_val
-        # else:
-        #     p_vis = None
-        # with XDMFFile(domain.comm, os.path.join(CONFIG["results_folder"], f"solution_{f}Hz.xdmf"), "w") as xdmf:
-        #     xdmf.write_mesh(domain)
-        #     xdmf.write_function(p_a)
-        #     if p_vis is not None:
-        #         xdmf.write_function(p_vis)
+        cutoff = float(CONFIG.get("source_cutoff_m", 0.0) or 0.0)
+        if cutoff > 0.0:
+            coords = V.tabulate_dof_coordinates().reshape((-1, domain.geometry.dim))
+            distances = np.linalg.norm(coords - source_pos, axis=1)
+            mask = distances < cutoff
+            p_vis = Function(V)
+            p_vis.name = "pressure_masked"
+            p_vis.x.array[:] = p_a.x.array
+            if np.iscomplexobj(p_vis.x.array):
+                nan_val = np.nan + 1j * np.nan
+            else:
+                nan_val = np.nan
+            p_vis.x.array[mask] = nan_val
+        else:
+            p_vis = None
+        with XDMFFile(domain.comm, os.path.join(CONFIG["results_folder"], f"solution_{f}Hz.xdmf"), "w") as xdmf:
+            xdmf.write_mesh(domain)
+            xdmf.write_function(p_a)
+            if p_vis is not None:
+                xdmf.write_function(p_vis)
         
         # Calculate and log solve time
         solve_elapsed_time = time.time() - solve_start_time
