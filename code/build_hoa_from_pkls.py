@@ -477,7 +477,7 @@ def write_mic_outputs(mic_data: dict, global_scale: float) -> None:
     ir = _apply_gain_db(ir, LISTEN_GAIN_DB)
 
     wav = ir.T.astype(np.float32)
-    out_path = mic_dir / OUT_NAME
+    out_path = mic_dir / f"{mic_dir.name}_{OUT_NAME}"
     write(str(out_path), FS, wav)
     print(f"[{mic_dir.name}] wrote {out_path}  shape={wav.shape}")
 
@@ -506,7 +506,7 @@ def write_mic_outputs(mic_data: dict, global_scale: float) -> None:
         dir_ir = _apply_gain_db(dir_ir, LISTEN_GAIN_DB)
 
         dir_wav = dir_ir.astype(np.float32)
-        dir_out_path = mic_dir / DIR_OUT_NAME
+        dir_out_path = mic_dir / f"{mic_dir.name}_{DIR_OUT_NAME}"
         write(str(dir_out_path), FS, dir_wav)
         print(f"[{mic_dir.name}] wrote {dir_out_path}  shape={dir_wav.shape}")
 
